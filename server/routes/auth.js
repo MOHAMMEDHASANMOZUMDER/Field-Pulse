@@ -1,5 +1,5 @@
 /**
- * Auth Routes — Register, Login, Me
+ * Auth Routes — Register, Login, Me (PostgreSQL)
  */
 const express = require('express');
 const bcrypt = require('bcryptjs');
@@ -23,8 +23,8 @@ router.post('/register', async (req, res) => {
     }
 
     const db = getDb();
-    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-    if (existing) {
+    const { rows: existing } = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (existing.length > 0) {
       return res.status(409).json({ error: 'Username already exists' });
     }
 
@@ -32,9 +32,10 @@ router.post('/register', async (req, res) => {
     const id = uuidv4();
     const now = Date.now();
 
-    db.prepare(
-      'INSERT INTO users (id, username, password, name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run(id, username, hashedPassword, name || username, 'technician', now, now);
+    await db.query(
+      'INSERT INTO users (id, username, password, name, role, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [id, username, hashedPassword, name || username, 'technician', now, now]
+    );
 
     const user = { id, username, name: name || username, role: 'technician' };
     const token = generateToken(user);
@@ -56,12 +57,13 @@ router.post('/login', async (req, res) => {
     }
 
     const db = getDb();
-    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+    const { rows } = await db.query('SELECT * FROM users WHERE username = $1', [username]);
 
-    if (!user) {
+    if (rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    const user = rows[0];
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -78,15 +80,18 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', authenticate, (req, res) => {
+router.get('/me', authenticate, async (req, res) => {
   const db = getDb();
-  const user = db.prepare('SELECT id, username, name, role, created_at FROM users WHERE id = ?').get(req.user.id);
+  const { rows } = await db.query(
+    'SELECT id, username, name, role, created_at FROM users WHERE id = $1',
+    [req.user.id]
+  );
 
-  if (!user) {
+  if (rows.length === 0) {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  res.json({ user });
+  res.json({ user: rows[0] });
 });
 
 module.exports = router;

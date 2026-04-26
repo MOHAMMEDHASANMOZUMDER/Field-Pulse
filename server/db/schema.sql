@@ -1,4 +1,4 @@
--- FieldPulse Database Schema
+-- FieldPulse Database Schema (PostgreSQL / Neon)
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -6,82 +6,74 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   name TEXT,
   role TEXT DEFAULT 'technician',
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS submissions (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id),
   customer_name TEXT,
   phone TEXT,
   address TEXT,
-  latitude REAL,
-  longitude REAL,
-  gps_accuracy REAL,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  gps_accuracy DOUBLE PRECISION,
   service_type TEXT,
   status TEXT DEFAULT 'completed',
   notes TEXT,
   version INTEGER DEFAULT 1,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS photos (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  submission_id TEXT,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  submission_id TEXT REFERENCES submissions(id),
   data_url TEXT,
   file_path TEXT,
-  latitude REAL,
-  longitude REAL,
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  FOREIGN KEY (submission_id) REFERENCES submissions(id)
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS signatures (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  submission_id TEXT,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  submission_id TEXT REFERENCES submissions(id),
   data_url TEXT,
   file_path TEXT,
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  FOREIGN KEY (submission_id) REFERENCES submissions(id)
+  created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS routes (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id),
   status TEXT DEFAULT 'completed',
-  start_time INTEGER,
-  end_time INTEGER,
+  start_time BIGINT,
+  end_time BIGINT,
   point_count INTEGER DEFAULT 0,
-  distance REAL DEFAULT 0,
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  distance DOUBLE PRECISION DEFAULT 0,
+  created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS route_points (
   id TEXT PRIMARY KEY,
-  route_id TEXT NOT NULL,
-  latitude REAL NOT NULL,
-  longitude REAL NOT NULL,
-  accuracy REAL,
-  timestamp INTEGER NOT NULL,
-  FOREIGN KEY (route_id) REFERENCES routes(id)
+  route_id TEXT NOT NULL REFERENCES routes(id),
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  accuracy DOUBLE PRECISION,
+  "timestamp" BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sync_log (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id),
   operation_type TEXT NOT NULL,
   entity_id TEXT NOT NULL,
   status TEXT DEFAULT 'received',
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  created_at BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_submissions_user ON submissions(user_id);

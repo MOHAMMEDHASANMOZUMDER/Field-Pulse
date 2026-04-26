@@ -1,30 +1,48 @@
 /**
- * Database initialization and access layer
+ * Database initialization and access layer — PostgreSQL (Neon)
  */
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
 const fs = require('fs');
+const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'fieldpulse.db');
+const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  'postgresql://neondb_owner:npg_2SYFQyXIA8ML@ep-autumn-rain-am4rb627-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
-let db;
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
 
-function init() {
-  db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+pool.on('error', (err) => {
+  console.error('Unexpected pool error:', err);
+});
 
-  // Read and execute schema
-  const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  db.exec(schema);
-
-  console.log('Database initialized at:', DB_PATH);
-  return db;
+/**
+ * Initialize database — run schema migration
+ */
+async function init() {
+  const client = await pool.connect();
+  try {
+    const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    await client.query(schema);
+    console.log('PostgreSQL database initialized (Neon)');
+  } catch (err) {
+    console.error('Database init error:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
+/**
+ * Get the connection pool (use pool.query for simple queries)
+ */
 function getDb() {
-  if (!db) init();
-  return db;
+  return pool;
 }
 
 module.exports = { init, getDb };
