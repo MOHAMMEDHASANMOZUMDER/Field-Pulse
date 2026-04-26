@@ -58,29 +58,77 @@ const LoginView = {
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      // If the server returned a real response (not a 404 fallback)
+      if (res.status !== 404) {
+        const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed');
-      }
-
-      localStorage.setItem('fp_token', data.token);
-      localStorage.setItem('fp_user', JSON.stringify(data.user));
-      App.onAuthSuccess(data.user);
-    } catch (err) {
-      if (!navigator.onLine && !this.isRegister) {
-        // Offline login: check cached credentials
-        const cachedUser = localStorage.getItem('fp_user');
-        if (cachedUser) {
-          App.onAuthSuccess(JSON.parse(cachedUser));
-          Toast.info('Offline Mode', 'Signed in with cached credentials');
-          return;
+        if (!res.ok) {
+          throw new Error(data.error || 'Authentication failed');
         }
+
+        localStorage.setItem('fp_token', data.token);
+        localStorage.setItem('fp_user', JSON.stringify(data.user));
+        App.onAuthSuccess(data.user);
+        return;
       }
-      errorEl.textContent = err.message || 'Network error. Please try again.';
-      errorEl.style.display = 'block';
+
+      // Server API not available — use local auth fallback
+      this._localAuthFallback(username, password, name);
+    } catch (err) {
+      // Network error (offline or server unreachable)
+      try {
+        this._localAuthFallback(username, password, name);
+      } catch (localErr) {
+        errorEl.textContent = localErr.message || 'Network error. Please try again.';
+        errorEl.style.display = 'block';
+      }
     } finally {
       btn.classList.remove('btn-loading');
     }
   },
+
+  /**
+   * Offline / no-backend auth: stores credentials in localStorage
+   */
+  _localAuthFallback(username, password, name) {
+    const accounts = JSON.parse(localStorage.getItem('fp_local_accounts') || '{}');
+
+    if (this.isRegister) {
+      if (accounts[username]) {
+        throw new Error('Username already exists');
+      }
+      const user = {
+        id: 'local-' + Date.now(),
+        username,
+        name: name || username,
+        role: 'technician',
+      };
+      accounts[username] = { password, user };
+      localStorage.setItem('fp_local_accounts', JSON.stringify(accounts));
+      localStorage.setItem('fp_user', JSON.stringify(user));
+      App.onAuthSuccess(user);
+      Toast.success('Account Created', 'Your account was created locally (offline mode)');
+    } else {
+      // Login — check local accounts first, then cached session
+      const entry = accounts[username];
+      if (entry && entry.password === password) {
+        localStorage.setItem('fp_user', JSON.stringify(entry.user));
+        App.onAuthSuccess(entry.user);
+        Toast.info('Offline Mode', 'Signed in with local credentials');
+        return;
+      }
+      // Fall back to any cached session
+      const cachedUser = localStorage.getItem('fp_user');
+      if (cachedUser) {
+        const parsed = JSON.parse(cachedUser);
+        if (parsed.username === username) {
+          App.onAuthSuccess(parsed);
+          Toast.info('Offline Mode', 'Signed in with cached credentials');
+          return;
+        }
+      }
+      throw new Error('Invalid credentials or no local account found');
+    }
+  },
 };
+

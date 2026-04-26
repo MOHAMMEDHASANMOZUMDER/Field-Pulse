@@ -55,6 +55,9 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
+  // Ignore non-HTTP(S) schemes (e.g. chrome-extension://)
+  if (!url.protocol.startsWith('http')) return;
+
   // API requests — network first
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
