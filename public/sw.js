@@ -1,7 +1,7 @@
 /**
  * Service Worker — Cache-first for app shell, network-first for API
  */
-const CACHE_NAME = 'fieldpulse-v1';
+const CACHE_NAME = 'fieldpulse-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

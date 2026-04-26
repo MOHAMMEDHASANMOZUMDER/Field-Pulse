@@ -58,22 +58,23 @@ const LoginView = {
         body: JSON.stringify(body),
       });
 
-      // If the server returned a real response (not a 404 fallback)
-      if (res.status !== 404) {
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || 'Authentication failed');
-        }
-
-        localStorage.setItem('fp_token', data.token);
-        localStorage.setItem('fp_user', JSON.stringify(data.user));
-        App.onAuthSuccess(data.user);
+      // Check if server returned actual JSON (not Vercel SPA HTML fallback)
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // Server API not available (returned HTML page) — use local fallback
+        this._localAuthFallback(username, password, name);
         return;
       }
 
-      // Server API not available — use local auth fallback
-      this._localAuthFallback(username, password, name);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Authentication failed');
+      }
+
+      localStorage.setItem('fp_token', data.token);
+      localStorage.setItem('fp_user', JSON.stringify(data.user));
+      App.onAuthSuccess(data.user);
     } catch (err) {
       // Network error (offline or server unreachable)
       try {
