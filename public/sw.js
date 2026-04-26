@@ -77,9 +77,11 @@ self.addEventListener('fetch', event => {
     caches.match(event.request).then(cached => {
       if (cached) return cached;
       return fetch(event.request).then(response => {
-        if (response.ok && event.request.method === 'GET') {
+        if (response.ok && event.request.method === 'GET' && url.protocol.startsWith('http')) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => {
+            try { cache.put(event.request, clone); } catch (e) { /* ignore non-cacheable */ }
+          }).catch(() => {});
         }
         return response;
       }).catch(() => {
