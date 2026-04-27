@@ -73,8 +73,9 @@ const App = {
     // Update user info in sidebar
     const avatar = document.getElementById('userAvatar');
     const name = document.getElementById('userName');
-    if (avatar) avatar.textContent = (user.name || user.username || 'FP').substring(0, 2).toUpperCase();
-    if (name) name.textContent = user.name || user.username || 'Field Worker';
+    const displayName = user.name || (user.email ? user.email.split('@')[0] : 'FP');
+    if (avatar) avatar.textContent = displayName.substring(0, 2).toUpperCase();
+    if (name) name.textContent = displayName;
 
     // Initialize sync engine
     SyncEngine.init();
