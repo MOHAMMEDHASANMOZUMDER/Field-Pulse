@@ -1,0 +1,12 @@
+{
+  "name": "field-pulse",
+  "version": "1.0.0",
+  "description": "FieldPulse — Offline-first field service management",
+  "private": true,
+  "scripts": {
+    "postinstall": "cd server && npm install"
+  },
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
+  }
+}
